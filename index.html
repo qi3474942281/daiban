@@ -11,6 +11,7 @@
 
         body {
             font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
         }
 
         .glass {
@@ -21,11 +22,14 @@
         .todo-container {
             max-width: 760px;
             margin: 0 auto;
+            width: 100%;
+            min-width: 0;
         }
 
         .task-item {
             transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
             position: relative;
+            min-width: 0;
         }
 
         .task-item:hover {
@@ -155,6 +159,131 @@
             color: #94a3b8;
             cursor: not-allowed;
         }
+
+        .date-fields {
+            min-width: 0;
+        }
+
+        @media (max-width: 640px) {
+            body.bg-\[\#f8f7fc\] {
+                padding: 22px 14px 28px !important;
+            }
+
+            .section-card {
+                border-radius: 18px;
+            }
+
+            .mobile-header {
+                align-items: flex-start;
+                gap: 18px;
+            }
+
+            .mobile-title-row {
+                align-items: flex-start;
+            }
+
+            .mobile-title-row h1 {
+                font-size: 30px;
+                line-height: 1.08;
+            }
+
+            .mobile-stats {
+                width: 100%;
+                justify-content: flex-start;
+                gap: 8px;
+            }
+
+            .mobile-stats .stat-card {
+                flex: 1;
+                justify-content: center;
+                min-width: 0;
+            }
+
+            .mobile-add-controls.flex {
+                width: 100%;
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) auto;
+            }
+
+            .mobile-priority {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .mobile-date-row.flex {
+                align-items: flex-start;
+                flex-wrap: wrap !important;
+                row-gap: 12px;
+            }
+
+            #date-range-wrapper.flex {
+                width: 100%;
+                align-items: flex-start;
+                flex-direction: column !important;
+                gap: 8px;
+            }
+
+            .date-fields.flex {
+                width: 100%;
+                display: grid !important;
+                grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+            }
+
+            .date-fields input {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .mobile-date-option {
+                border-left: 0;
+                padding-left: 0;
+                min-height: 32px;
+            }
+
+            .mobile-filters.flex {
+                width: 100%;
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .mobile-filters button {
+                padding-left: 0;
+                padding-right: 0;
+            }
+
+            .task-list {
+                max-height: none;
+                padding-left: 6px;
+                padding-right: 6px;
+            }
+
+            .mobile-task-card.flex {
+                flex-wrap: wrap !important;
+                gap: 10px;
+                padding: 14px 12px 12px 16px;
+                margin-left: 0;
+                margin-right: 0;
+            }
+
+            .mobile-task-meta.flex {
+                width: 100%;
+                justify-content: flex-start;
+                flex-wrap: wrap !important;
+                padding-left: 30px;
+                gap: 8px;
+            }
+
+            .mobile-footer {
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .mobile-footer-actions {
+                width: 100%;
+                justify-content: space-between;
+                gap: 12px;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#f8f7fc] min-h-screen py-10 px-4">
@@ -162,10 +291,10 @@
         
         <!-- Premium Header -->
         <div class="mb-9">
-            <div class="flex items-end justify-between">
+            <div class="mobile-header flex flex-col sm:flex-row sm:items-end justify-between">
                 <!-- Title Area -->
                 <div>
-                    <div class="flex items-center gap-x-3">
+                    <div class="mobile-title-row flex items-center gap-x-3">
                         <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-inner">
                             <i class="fa-solid fa-list-check text-white text-2xl"></i>
                         </div>
@@ -177,7 +306,7 @@
                 </div>
 
                 <!-- Right Stats + Progress -->
-                <div class="flex items-center gap-x-8">
+                <div class="mobile-stats flex items-center gap-x-8">
                     <!-- Progress Ring -->
                     <div class="hidden md:flex items-center gap-x-4">
                         <div class="relative w-14 h-14">
@@ -237,9 +366,9 @@
                 </div>
 
                 <!-- Controls -->
-                <div class="flex gap-3">
+                <div class="mobile-add-controls flex gap-3">
                     <!-- Priority -->
-                    <div class="w-[118px]">
+                    <div class="mobile-priority w-[118px]">
                         <select id="priority-select" 
                                 class="beautiful-input w-full h-[46px] px-4 border border-slate-200 focus:border-indigo-400 rounded-2xl text-sm bg-white outline-none">
                             <option value="medium">中优先级</option>
@@ -258,12 +387,12 @@
             </div>
 
             <!-- 日期范围 + 是否设置期限 -->
-            <div class="mt-3 flex items-center gap-x-4 text-sm">
+            <div class="mobile-date-row mt-3 flex items-center gap-x-4 text-sm">
                 <!-- 日期范围部分 -->
                 <div class="flex items-center gap-x-2" id="date-range-wrapper">
                     <span class="text-slate-500 font-medium whitespace-nowrap">日期范围</span>
                     
-                    <div class="flex items-center gap-x-1.5">
+                    <div class="date-fields flex items-center gap-x-1.5">
                         <span class="text-slate-400">从</span>
                         <input id="start-date" 
                                type="date"
@@ -277,7 +406,7 @@
                 </div>
 
                 <!-- 是否设置期限复选框 -->
-                <label class="flex items-center gap-x-2 text-slate-600 cursor-pointer select-none pl-2 border-l border-slate-200">
+                <label class="mobile-date-option flex items-center gap-x-2 text-slate-600 cursor-pointer select-none pl-2 border-l border-slate-200">
                     <input type="checkbox" id="has-deadline" checked 
                            class="w-[15px] h-[15px] accent-indigo-600 cursor-pointer">
                     <span class="text-sm">设置期限</span>
@@ -305,7 +434,7 @@
             </div>
 
             <!-- Filter Pills -->
-            <div class="flex bg-white border border-slate-200 rounded-3xl p-1 text-sm font-medium shadow-sm">
+            <div class="mobile-filters flex bg-white border border-slate-200 rounded-3xl p-1 text-sm font-medium shadow-sm">
                 <button onclick="setFilter('all')" id="filter-all"
                         class="filter-btn active px-5 py-[7px] rounded-[14px] text-sm">全部</button>
                 <button onclick="setFilter('active')" id="filter-active"
@@ -335,12 +464,12 @@
         </div>
 
         <!-- Footer -->
-        <div class="mt-5 flex items-center justify-between px-2 text-sm">
+        <div class="mobile-footer mt-5 flex flex-col sm:flex-row sm:items-center justify-between px-2 text-sm">
             <div class="text-slate-500">
                 共 <span id="total-count" class="font-medium text-slate-700 tabular-nums">0</span> 个任务
             </div>
             
-            <div class="flex gap-x-5 text-sm">
+            <div class="mobile-footer-actions flex gap-x-5 text-sm">
                 <button onclick="clearCompleted()" 
                         class="flex items-center gap-x-2 text-slate-500 hover:text-red-500 transition-colors">
                     <i class="fa-solid fa-check-double"></i>
@@ -570,7 +699,7 @@
 
         function createTaskCard(task) {
             const div = document.createElement('div');
-            div.className = `task-item group flex items-start gap-4 px-5 py-[15px] mx-2 my-1 rounded-2xl ${task.completed ? 'completed bg-slate-50' : 'bg-white hover:bg-slate-50/70'}`;
+            div.className = `mobile-task-card task-item group flex items-start gap-4 px-5 py-[15px] mx-2 my-1 rounded-2xl ${task.completed ? 'completed bg-slate-50' : 'bg-white hover:bg-slate-50/70'}`;
             div.draggable = true;
             div.dataset.id = task.id;
 
@@ -662,7 +791,7 @@
                 </div>
 
                 <!-- Right column -->
-                <div class="flex items-center gap-x-3 flex-shrink-0 pt-0.5">
+                <div class="mobile-task-meta flex items-center gap-x-3 flex-shrink-0 pt-0.5">
                     <!-- 未完成提示（每天任务昨天未完成） -->
                     ${task.isDaily && task._missedYesterday ? 
                         `<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">未完成</span>` : ''}
