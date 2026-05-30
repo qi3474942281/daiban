@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>待办 · 清单</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap');
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+        }
+
+        .todo-container {
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        .task-item {
+            transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+            position: relative;
+        }
+
+        .task-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.06), 0 8px 10px -6px rgb(0 0 0 / 0.06);
+        }
+
+        .task-item.completed {
+            opacity: 0.65;
+        }
+
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+
+        .priority-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            border-radius: 2px 0 0 2px;
+            transition: all 0.2s ease;
+        }
+
+        .priority-high { background: linear-gradient(to bottom, #f87171, #ef4444); }
+        .priority-medium { background: linear-gradient(to bottom, #fbbf24, #f59e0b); }
+        .priority-low { background: linear-gradient(to bottom, #60a5fa, #3b82f6); }
+
+        .priority-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .priority-dot.high { background-color: #ef4444; }
+        .priority-dot.medium { background-color: #f59e0b; }
+        .priority-dot.low { background-color: #3b82f6; }
+
+        .filter-btn {
+            transition: all 0.15s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn.active {
+            background-color: #6366f1;
+            color: white;
+            box-shadow: 0 1px 2px rgb(99 102 241 / 0.2);
+        }
+
+        .task-text {
+            transition: color 0.2s ease;
+            line-height: 1.5;
+        }
+
+        .empty-state {
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .task-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .task-list::-webkit-scrollbar-thumb {
+            background-color: #e2e8f0;
+            border-radius: 20px;
+        }
+
+        .drag-over {
+            border-top: 3px solid #6366f1;
+            background-color: #f8fafc;
+        }
+
+        .premium-shadow {
+            box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.08),
+                        0 4px 6px -4px rgb(15 23 42 / 0.08);
+        }
+
+        .section-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.06),
+                        0 4px 6px -4px rgb(15 23 42 / 0.06);
+            border: 1px solid #f1e7ff10;
+        }
+
+        .motivational {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+
+        .stat-card {
+            background: white;
+            transition: transform 0.2s ease;
+        }
+
+        .beautiful-input {
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+        }
+        
+        .beautiful-input:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+            border-color: #6366f1;
+        }
+
+        .task-action-btn {
+            opacity: 0.6;
+            transition: all 0.15s ease;
+        }
+        .task-item:hover .task-action-btn {
+            opacity: 1;
+        }
+
+        .progress-ring {
+            transition: stroke-dashoffset 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* 日期范围禁用状态美化 */
+        #date-range-wrapper input:disabled {
+            background-color: #f8fafc;
+            border-color: #e2e8f0;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-[#f8f7fc] min-h-screen py-10 px-4">
+    <div class="todo-container">
+        
+        <!-- Premium Header -->
+        <div class="mb-9">
+            <div class="flex items-end justify-between">
+                <!-- Title Area -->
+                <div>
+                    <div class="flex items-center gap-x-3">
+                        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-inner">
+                            <i class="fa-solid fa-list-check text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-[34px] leading-none font-semibold tracking-tighter text-slate-900">待办清单</h1>
+                            <p class="text-slate-500 text-[15px] mt-1">让每一天都更有条理</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Stats + Progress -->
+                <div class="flex items-center gap-x-8">
+                    <!-- Progress Ring -->
+                    <div class="hidden md:flex items-center gap-x-4">
+                        <div class="relative w-14 h-14">
+                            <svg class="w-14 h-14 -rotate-90" viewBox="0 0 42 42">
+                                <circle cx="21" cy="21" r="18" fill="none" stroke="#e2e8f0" stroke-width="5"></circle>
+                                <circle id="progress-ring" 
+                                        class="progress-ring"
+                                        cx="21" cy="21" r="18" fill="none" 
+                                        stroke="#6366f1" stroke-width="5" 
+                                        stroke-dasharray="113" stroke-dashoffset="113"
+                                        stroke-linecap="round"></circle>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <span id="completion-percent" class="text-lg font-semibold text-slate-700">0</span>
+                            </div>
+                        </div>
+                        <div class="text-sm leading-tight">
+                            <div class="font-medium text-slate-700">今日完成</div>
+                            <div class="text-xs text-slate-500">保持势头</div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="flex items-center gap-x-2 text-sm">
+                        <div class="stat-card px-4 py-2 rounded-2xl border border-slate-100 flex items-center gap-x-2.5">
+                            <div class="text-right">
+                                <div id="pending-count" class="text-2xl font-semibold text-slate-900 tabular-nums leading-none">0</div>
+                                <div class="text-[10px] text-slate-500 tracking-wide -mt-0.5">待办</div>
+                            </div>
+                        </div>
+                        <div class="stat-card px-4 py-2 rounded-2xl border border-slate-100 flex items-center gap-x-2.5">
+                            <div class="text-right">
+                                <div id="completed-count" class="text-2xl font-semibold text-emerald-600 tabular-nums leading-none">0</div>
+                                <div class="text-[10px] text-slate-500 tracking-wide -mt-0.5">已完成</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Task Card -->
+        <div class="section-card p-6 mb-6 border border-slate-100">
+            <div class="flex items-center gap-2 mb-3 px-1">
+                <i class="fa-solid fa-plus text-indigo-500"></i>
+                <span class="text-sm font-semibold tracking-wide text-slate-600">新建任务</span>
+            </div>
+            
+            <div class="flex flex-col lg:flex-row gap-3">
+                <!-- Task Input -->
+                <div class="flex-1">
+                    <input id="task-input" 
+                           type="text" 
+                           placeholder="今天要完成什么？"
+                           class="beautiful-input w-full px-5 py-[13px] text-[15px] border border-slate-200 focus:border-indigo-400 rounded-2xl outline-none placeholder:text-slate-400"
+                           onkeypress="if (event.key === 'Enter') addTask()">
+                </div>
+
+                <!-- Controls -->
+                <div class="flex gap-3">
+                    <!-- Priority -->
+                    <div class="w-[118px]">
+                        <select id="priority-select" 
+                                class="beautiful-input w-full h-[46px] px-4 border border-slate-200 focus:border-indigo-400 rounded-2xl text-sm bg-white outline-none">
+                            <option value="medium">中优先级</option>
+                            <option value="high">高优先级</option>
+                            <option value="low">低优先级</option>
+                        </select>
+                    </div>
+
+                    <!-- Add Button -->
+                    <button onclick="addTask()"
+                            class="h-[46px] px-7 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 active:scale-[0.985] text-white font-medium rounded-2xl flex items-center gap-x-2 shadow-sm transition-all">
+                        <i class="fa-solid fa-plus text-sm"></i>
+                        <span class="font-semibold tracking-wide">添加</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 日期范围 + 是否设置期限 -->
+            <div class="mt-3 flex items-center gap-x-4 text-sm">
+                <!-- 日期范围部分 -->
+                <div class="flex items-center gap-x-2" id="date-range-wrapper">
+                    <span class="text-slate-500 font-medium whitespace-nowrap">日期范围</span>
+                    
+                    <div class="flex items-center gap-x-1.5">
+                        <span class="text-slate-400">从</span>
+                        <input id="start-date" 
+                               type="date"
+                               class="beautiful-input px-2.5 py-1.5 border border-slate-200 focus:border-indigo-400 rounded-lg text-sm w-[128px] outline-none">
+                        
+                        <span class="text-slate-400">到</span>
+                        <input id="end-date" 
+                               type="date"
+                               class="beautiful-input px-2.5 py-1.5 border border-slate-200 focus:border-indigo-400 rounded-lg text-sm w-[128px] outline-none">
+                    </div>
+                </div>
+
+                <!-- 是否设置期限复选框 -->
+                <label class="flex items-center gap-x-2 text-slate-600 cursor-pointer select-none pl-2 border-l border-slate-200">
+                    <input type="checkbox" id="has-deadline" checked 
+                           class="w-[15px] h-[15px] accent-indigo-600 cursor-pointer">
+                    <span class="text-sm">设置期限</span>
+                </label>
+
+                <!-- 每天复选框 -->
+                <label class="flex items-center gap-x-2 text-slate-600 cursor-pointer select-none">
+                    <input type="checkbox" id="is-daily" 
+                           class="w-[15px] h-[15px] accent-indigo-600 cursor-pointer">
+                    <span class="text-sm">每天</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="flex flex-col sm:flex-row gap-3 mb-4 items-center">
+            <!-- Search -->
+            <div class="flex-1 w-full relative">
+                <i class="fa-solid fa-search absolute left-5 top-3.5 text-slate-400"></i>
+                <input id="search-input" 
+                       type="text" 
+                       placeholder="搜索任务..." 
+                       oninput="filterTasks()"
+                       class="beautiful-input w-full pl-12 pr-5 py-3 bg-white border border-slate-200 focus:border-indigo-400 rounded-3xl text-sm outline-none">
+            </div>
+
+            <!-- Filter Pills -->
+            <div class="flex bg-white border border-slate-200 rounded-3xl p-1 text-sm font-medium shadow-sm">
+                <button onclick="setFilter('all')" id="filter-all"
+                        class="filter-btn active px-5 py-[7px] rounded-[14px] text-sm">全部</button>
+                <button onclick="setFilter('active')" id="filter-active"
+                        class="filter-btn px-5 py-[7px] rounded-[14px] hover:bg-slate-50">待办</button>
+                <button onclick="setFilter('completed')" id="filter-completed"
+                        class="filter-btn px-5 py-[7px] rounded-[14px] hover:bg-slate-50">已完成</button>
+            </div>
+        </div>
+
+        <!-- Task List -->
+        <div class="section-card overflow-hidden border border-slate-100">
+            <div id="task-list" 
+                 class="task-list divide-y divide-slate-100 max-h-[540px] overflow-auto px-2 py-2">
+                <!-- Dynamically rendered -->
+            </div>
+
+            <!-- Beautiful Empty State -->
+            <div id="empty-state" class="empty-state hidden px-10 py-14 text-center">
+                <div class="mx-auto w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-5">
+                    <i class="fa-regular fa-lightbulb text-3xl text-slate-300"></i>
+                </div>
+                <h3 class="text-lg font-medium text-slate-700">暂无任务</h3>
+                <p class="text-sm text-slate-500 mt-1 max-w-[220px] mx-auto">
+                    添加你的第一个任务，让今天变得更有意义
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-5 flex items-center justify-between px-2 text-sm">
+            <div class="text-slate-500">
+                共 <span id="total-count" class="font-medium text-slate-700 tabular-nums">0</span> 个任务
+            </div>
+            
+            <div class="flex gap-x-5 text-sm">
+                <button onclick="clearCompleted()" 
+                        class="flex items-center gap-x-2 text-slate-500 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-check-double"></i>
+                    <span>清除已完成</span>
+                </button>
+                <button onclick="clearAll()" 
+                        class="flex items-center gap-x-2 text-slate-500 hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-times"></i>
+                    <span>清空全部</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind config
+        function initTailwind() {
+            // Already using CDN, can extend if needed
+        }
+
+        let tasks = [];
+        let currentFilter = 'all';
+
+        // Load tasks
+        function loadTasks() {
+            const saved = localStorage.getItem('todo_tasks_v2');
+            if (saved) {
+                tasks = JSON.parse(saved);
+            } else {
+                // Beautiful first-time experience
+                tasks = [
+                    {
+                        id: 't1', text: '完成这个精美的待办清单', completed: false,
+                        priority: 'high', dueDate: null, createdAt: new Date().toISOString()
+                    },
+                    {
+                        id: 't2', text: '整理一下桌面文件和资料', completed: false,
+                        priority: 'medium', dueDate: null, createdAt: new Date().toISOString()
+                    }
+                ];
+                saveTasks();
+            }
+        }
+
+        function saveTasks() {
+            localStorage.setItem('todo_tasks_v2', JSON.stringify(tasks));
+        }
+
+        // 设置添加表单的日期范围默认值
+        function setDefaultDateRange() {
+            const startInput = document.getElementById('start-date');
+            const endInput = document.getElementById('end-date');
+            const checkbox = document.getElementById('has-deadline');
+            if (!startInput) return;
+
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            // 默认勾选“设置期限”
+            if (checkbox) checkbox.checked = true;
+
+            // 起始日期始终默认今天
+            startInput.value = todayStr;
+
+            // 结束日期默认今天
+            if (endInput) {
+                endInput.value = todayStr;
+            }
+
+            // 应用启用/禁用状态
+            updateDateInputsState();
+        }
+
+        // 根据复选框状态启用/禁用日期输入框
+        function updateDateInputsState() {
+            const wrapper = document.getElementById('date-range-wrapper');
+            const startInput = document.getElementById('start-date');
+            const endInput = document.getElementById('end-date');
+            const checkbox = document.getElementById('has-deadline');
+
+            if (!wrapper || !startInput || !endInput || !checkbox) return;
+
+            const enabled = checkbox.checked;
+
+            startInput.disabled = !enabled;
+            endInput.disabled = !enabled;
+
+            // 视觉反馈
+            if (enabled) {
+                wrapper.style.opacity = '1';
+            } else {
+                wrapper.style.opacity = '0.5';
+            }
+        }
+
+        // 处理每天重复任务（每天重置 + 未完成标记）
+        function processDailyRecurringTasks() {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+            let changed = false;
+
+            tasks.forEach(task => {
+                if (!task.isDaily) return;
+
+                const inDateRange = isTaskInDateRange(task, todayStr);
+
+                if (!inDateRange) return; // 不在规定日期范围内则不处理每天逻辑
+
+                // 如果上一次完成日期不是今天，则重置为未完成（实现第二天自动变待办）
+                if (task.lastCompletedDate && task.lastCompletedDate < todayStr) {
+                    if (task.completed) {
+                        task.completed = false;
+                        changed = true;
+                    }
+                }
+
+                // 标记昨天未完成的情况（用于显示“未完成”标签）
+                const wasDueYesterday = !task.endDate || task.endDate >= yesterdayStr;
+                if (!task.completed && task.lastCompletedDate !== yesterdayStr && wasDueYesterday) {
+                    // 这个任务昨天应该完成但没完成，标记为 missed
+                    task._missedYesterday = true;
+                } else {
+                    task._missedYesterday = false;
+                }
+            });
+
+            if (changed) {
+                saveTasks();
+            }
+        }
+
+        // 判断任务今天是否在日期范围内
+        function isTaskInDateRange(task, todayStr) {
+            if (!task.startDate && !task.endDate) return true; // 无日期限制
+
+            if (task.startDate && todayStr < task.startDate) return false;
+            if (task.endDate && todayStr > task.endDate) return false;
+
+            return true;
+        }
+
+        // 安全解析日期字符串为本地日期（避免 new Date("2026-05-30") 的时区问题）
+        function parseLocalDate(dateStr) {
+            if (!dateStr) return null;
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day); // 本地时区午夜
+        }
+
+        // Calculate completion percentage (带动画效果)
+        function updateProgress() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            const targetPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            // 圆环动画（CSS transition 自动处理）
+            const ring = document.getElementById('progress-ring');
+            const circumference = 113;
+            const offset = circumference - (targetPercent / 100) * circumference;
+            ring.setAttribute('stroke-dashoffset', offset);
+
+            // 百分比数字动画
+            const percentEl = document.getElementById('completion-percent');
+            const currentPercent = parseInt(percentEl.textContent) || 0;
+
+            animatePercent(percentEl, currentPercent, targetPercent, 650);
+        }
+
+        // 百分比数字动画函数
+        function animatePercent(element, start, end, duration) {
+            const startTime = performance.now();
+            const range = end - start;
+
+            function step(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // easeOutCubic
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = Math.round(start + range * eased);
+
+                element.textContent = current;
+
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    element.textContent = end;
+                }
+            }
+
+            requestAnimationFrame(step);
+        }
+
+        // Render all tasks
+        function renderTasks(filtered = null) {
+            // 每次渲染前都处理一下每天任务（防止跨天后状态没更新）
+            processDailyRecurringTasks();
+
+            const container = document.getElementById('task-list');
+            const empty = document.getElementById('empty-state');
+            container.innerHTML = '';
+
+            const list = filtered || getFilteredTasks();
+
+            if (list.length === 0) {
+                empty.classList.remove('hidden');
+                container.classList.add('hidden');
+            } else {
+                empty.classList.add('hidden');
+                container.classList.remove('hidden');
+
+                list.forEach(task => {
+                    container.appendChild(createTaskCard(task));
+                });
+            }
+
+            updateStats();
+            updateProgress();
+        }
+
+        function createTaskCard(task) {
+            const div = document.createElement('div');
+            div.className = `task-item group flex items-start gap-4 px-5 py-[15px] mx-2 my-1 rounded-2xl ${task.completed ? 'completed bg-slate-50' : 'bg-white hover:bg-slate-50/70'}`;
+            div.draggable = true;
+            div.dataset.id = task.id;
+
+            const priorityBarClass = `priority-bar priority-${task.priority}`;
+            const priorityDotClass = `priority-dot ${task.priority}`;
+
+            let dueHTML = '';
+
+            // 支持新日期范围 + 兼容旧 dueDate
+            const startDate = task.startDate || task.dueDate || null;
+            const endDate = task.endDate || task.dueDate || null;
+
+            if (startDate || endDate) {
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+
+                const start = startDate ? parseLocalDate(startDate) : null;
+                const end = endDate ? parseLocalDate(endDate) : start;
+
+                let label = '';
+                let color = 'text-slate-500 bg-slate-100';
+
+                if (start && end) {
+                    const startLabel = start.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+                    const endLabel = end.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+
+                    // 计算范围状态
+                    const startDiff = Math.round((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const endDiff = Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+                    if (endDiff < 0) {
+                        // 整个范围已过期
+                        color = 'text-red-600 bg-red-50';
+                        label = startLabel === endLabel ? `${startLabel} 已过期` : `${startLabel} - ${endLabel} 已过期`;
+                    } else if (startDiff > 0) {
+                        // 未来范围
+                        color = 'text-blue-600 bg-blue-50';
+                        label = startLabel === endLabel ? startLabel : `${startLabel} - ${endLabel}`;
+                    } else if (endDiff === 0 && startDiff <= 0) {
+                        // 今天到期或今天范围
+                        color = 'text-orange-600 bg-orange-50 font-medium';
+                        label = startLabel === endLabel ? '今天到期' : `${startLabel} - 今天`;
+                    } else {
+                        // 进行中的范围
+                        color = 'text-emerald-600 bg-emerald-50';
+                        label = startLabel === endLabel ? startLabel : `${startLabel} - ${endLabel}`;
+                    }
+                } else if (start) {
+                    // 只有开始日期
+                    const diff = Math.round((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const startLabel = start.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+
+                    if (diff < 0) {
+                        color = 'text-red-600 bg-red-50';
+                        label = `${startLabel} 已开始`;
+                    } else if (diff === 0) {
+                        color = 'text-orange-600 bg-orange-50 font-medium';
+                        label = '今天开始';
+                    } else {
+                        label = startLabel;
+                    }
+                }
+
+                if (label) {
+                    dueHTML = `<span class="text-xs px-2.5 py-px rounded-full ${color}">${label}</span>`;
+                }
+            }
+
+            div.innerHTML = `
+                <div class="${priorityBarClass}"></div>
+
+                <div class="flex-1 min-w-0 pl-2">
+                    <!-- Main content -->
+                    <div class="flex items-start gap-3">
+                        <!-- Checkbox -->
+                        <button onclick="toggleComplete('${task.id}', event)"
+                                class="mt-1 flex-shrink-0 w-[19px] h-[19px] rounded-full border flex items-center justify-center transition-all
+                                ${task.completed 
+                                    ? 'bg-emerald-500 border-emerald-500 text-white' 
+                                    : 'border-slate-300 hover:border-indigo-400 group-hover:border-indigo-300 bg-white'}">
+                            ${task.completed ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}
+                        </button>
+
+                        <!-- Text -->
+                        <div onclick="startEdit('${task.id}', this)" 
+                             class="task-text flex-1 text-[15px] leading-[1.55] text-slate-800 cursor-pointer break-words pt-px">
+                            ${escapeHtml(task.text)}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right column -->
+                <div class="flex items-center gap-x-3 flex-shrink-0 pt-0.5">
+                    <!-- 未完成提示（每天任务昨天未完成） -->
+                    ${task.isDaily && task._missedYesterday ? 
+                        `<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">未完成</span>` : ''}
+
+                    <!-- Priority -->
+                    <div class="flex items-center gap-1.5 text-xs font-medium pr-1">
+                        <div class="${priorityDotClass}"></div>
+                        <span class="text-slate-500">${getPriorityLabel(task.priority)}</span>
+                    </div>
+
+                    ${dueHTML}
+
+                    <!-- Actions -->
+                    <div class="flex gap-0.5 ml-1">
+                        <button onclick="startEdit('${task.id}', this); event.stopImmediatePropagation();" 
+                                class="task-action-btn w-8 h-8 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl">
+                            <i class="fa-solid fa-pen text-sm"></i>
+                        </button>
+                        <button onclick="deleteTask('${task.id}', event)" 
+                                class="task-action-btn w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl">
+                            <i class="fa-solid fa-trash text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Drag & Drop
+            div.addEventListener('dragstart', handleDragStart);
+            div.addEventListener('dragover', handleDragOver);
+            div.addEventListener('drop', handleDrop);
+            div.addEventListener('dragend', handleDragEnd);
+
+            return div;
+        }
+
+        function getPriorityLabel(p) {
+            return { high: '高', medium: '中', low: '低' }[p];
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function getFilteredTasks() {
+            const q = document.getElementById('search-input').value.toLowerCase().trim();
+            return tasks.filter(task => {
+                const statusOk = currentFilter === 'all' || 
+                               (currentFilter === 'active' && !task.completed) ||
+                               (currentFilter === 'completed' && task.completed);
+                const searchOk = !q || task.text.toLowerCase().includes(q);
+                return statusOk && searchOk;
+            });
+        }
+
+        function filterTasks() {
+            renderTasks();
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('[id^="filter-"]').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('filter-' + filter).classList.add('active');
+            renderTasks();
+        }
+
+        // Add task
+        function addTask() {
+            const input = document.getElementById('task-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const priority = document.getElementById('priority-select').value;
+            const hasDeadlineCheckbox = document.getElementById('has-deadline');
+            const dailyCheckbox = document.getElementById('is-daily');
+
+            const hasDeadline = hasDeadlineCheckbox ? hasDeadlineCheckbox.checked : true;
+            const isDaily = dailyCheckbox ? dailyCheckbox.checked : false;
+
+            let startDate = null;
+            let endDate = null;
+
+            if (hasDeadline) {
+                startDate = document.getElementById('start-date')?.value || null;
+                endDate = document.getElementById('end-date')?.value || null;
+            }
+
+            tasks.unshift({
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                text,
+                completed: false,
+                priority,
+                startDate,
+                endDate,
+                isDaily,
+                lastCompletedDate: null,
+                createdAt: new Date().toISOString()
+            });
+
+            saveTasks();
+            renderTasks();
+            input.value = '';
+            setDefaultDateRange();   // 重置日期范围，用户仍可修改
+            input.focus();
+        }
+
+        function toggleComplete(id, e) {
+            e.stopImmediatePropagation();
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            const wasCompleted = task.completed;
+            task.completed = !task.completed;
+
+            // 如果是每天任务且现在完成了，记录完成日期
+            if (task.isDaily && task.completed && !wasCompleted) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                task.lastCompletedDate = todayStr;
+            }
+
+            saveTasks();
+            renderTasks();
+        }
+
+        function deleteTask(id, e) {
+            e.stopImmediatePropagation();
+            if (!confirm('确定删除这个任务吗？')) return;
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+            renderTasks();
+        }
+
+        function startEdit(id, element) {
+            const task = tasks.find(t => t.id === id);
+            if (!task || task.completed) return;
+
+            const original = task.text;
+            const wrapper = element.parentElement;
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = original;
+            input.className = 'flex-1 px-3 py-1.5 text-[15px] border border-indigo-300 rounded-xl outline-none focus:border-indigo-500';
+
+            element.replaceWith(input);
+            input.focus();
+            input.select();
+
+            const finish = () => {
+                const val = input.value.trim();
+                if (val && val !== original) {
+                    task.text = val;
+                    saveTasks();
+                }
+                renderTasks();
+            };
+
+            input.onblur = finish;
+            input.onkeydown = (ev) => {
+                if (ev.key === 'Enter') finish();
+                if (ev.key === 'Escape') renderTasks();
+            };
+        }
+
+        // Drag & Drop
+        let dragged = null;
+
+        function handleDragStart(e) {
+            dragged = this;
+            setTimeout(() => this.style.opacity = '0.45', 0);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            if (dragged === this) return;
+
+            const fromId = dragged.dataset.id;
+            const toId = this.dataset.id;
+
+            const fromIdx = tasks.findIndex(t => t.id === fromId);
+            const toIdx = tasks.findIndex(t => t.id === toId);
+
+            const [moved] = tasks.splice(fromIdx, 1);
+            tasks.splice(toIdx, 0, moved);
+
+            saveTasks();
+            renderTasks();
+        }
+
+        function handleDragEnd() {
+            if (dragged) dragged.style.opacity = '1';
+            document.querySelectorAll('.task-item').forEach(el => el.classList.remove('drag-over'));
+            dragged = null;
+        }
+
+        function updateStats() {
+            const total = tasks.length;
+            const done = tasks.filter(t => t.completed).length;
+
+            document.getElementById('pending-count').textContent = total - done;
+            document.getElementById('completed-count').textContent = done;
+            document.getElementById('total-count').textContent = total;
+        }
+
+        function clearCompleted() {
+            const count = tasks.filter(t => t.completed).length;
+            if (count === 0) return;
+            if (!confirm(`要清除 ${count} 个已完成任务吗？`)) return;
+            tasks = tasks.filter(t => !t.completed);
+            saveTasks();
+            renderTasks();
+        }
+
+        function clearAll() {
+            if (!tasks.length) return;
+            if (!confirm('确定清空所有任务吗？')) return;
+            tasks = [];
+            saveTasks();
+            renderTasks();
+        }
+
+        function setupKeyboard() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+                    e.preventDefault();
+                    document.getElementById('search-input').focus();
+                }
+                if (e.key.toLowerCase() === 'n' && document.activeElement.tagName === 'BODY') {
+                    document.getElementById('task-input').focus();
+                }
+            });
+        }
+
+        function init() {
+            initTailwind();
+            loadTasks();
+
+            // 设置日期范围默认为今天
+            setDefaultDateRange();
+
+            // 监听“设置期限”复选框
+            const deadlineCheckbox = document.getElementById('has-deadline');
+            if (deadlineCheckbox) {
+                deadlineCheckbox.addEventListener('change', updateDateInputsState);
+            }
+
+            // 监听“每天”复选框（可选联动）
+            const dailyCheckbox = document.getElementById('is-daily');
+            if (dailyCheckbox) {
+                dailyCheckbox.addEventListener('change', () => {
+                    // 可以在这里加一些提示，但目前保持简单
+                });
+            }
+
+            // 处理每天重复任务（重置 + 标记未完成）
+            processDailyRecurringTasks();
+
+            // Set initial filter style
+            document.getElementById('filter-all').classList.add('active');
+
+            renderTasks();
+            setupKeyboard();
+
+            // Focus input
+            setTimeout(() => {
+                document.getElementById('task-input').focus();
+            }, 450);
+        }
+
+        // 确保日期始终使用打开时的当天日期（处理浏览器缓存和前进后退）
+        window.addEventListener('pageshow', () => {
+            setDefaultDateRange();
+        });
+
+        window.onload = init;
+    </script>
+</body>
+</html>
